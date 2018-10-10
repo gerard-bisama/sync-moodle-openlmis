@@ -1,0 +1,41 @@
+{
+  "launch_path": "syncdata.js",
+  "default_locale": "en",
+  "activities": {
+    "moodleAPI": {
+      "url": "http://IP:PORT/moodle/webservice",
+      "wsProtocolName":"rest",
+      "wsToken":"xxxxx"
+    },
+    "openlmisAPI": {
+      "url": "http://IP/api",
+      "credential":{"username":"username","password":"password"},
+      "authentication":{"username":"username","password":"password"},
+      "serviceLevelAuthentication":{"username":"username","password":"password"}
+    }
+  },
+  "usernameToExclude":[
+	"user1","user2","user3"
+  ],
+  "lmisUserCreationRolesAndProgramRules":[
+	{"role":"Stock Manager","program_wharehouse":"Family Planning"},
+	{"role":"Store Manager","program_wharehouse":"Essential Meds"},
+	{"role":"Storeroom Manager","program_wharehouse":"Essential Meds"},
+	{"role":"Warehouse Clerk","program_wharehouse":""}
+  ],
+  "emailSettings":
+	{
+		"smtp_host":"xxxx",
+		"smtp_port":"xx",
+		"smtp_secured":"xx",
+		"username":"xxxx@xxxx.com",
+		"password":"xxxxxx"
+	},
+  "appType": "APP",
+  "name": "Moodle-openLMIS sync app",
+  "version": "1.0.0",
+  "description": "App for exchanging information between moodle and openLMIS",
+  "developer": {
+    "name": "Gerard Bisama"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "Moodle-openLMIS-sync-app",
+  "description": "App for exchanging information between moodle and openLMIS",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node start.js"
+  },
+  "dependencies": {
+    "forever-monitor": "^1.7.1",
+    "moment": "^2.22.1",
+    "nodemailer": "^4.6.4"
+  },
+  "author": "Gerard",
+  "license": "BSD-3-Clause",
+  "keywords": [
+    "DHIS2",
+    "App"
+  ],
+  "devDependencies": {
+    "express": "^4.16.3",
+    "xmlhttprequest": "^1.8.0",
+    "body-parser": "^1.18.3",
+    "async":"^2.6.1",
+    "btoa":"^1.1.2",
+    "express-session":"^1.15.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gerard-bisama/sync-moodle-openlmis.git"
+  },
+  "homepage": "https://github.com/gerard-bisama/sync-moodle-openlmis.git#readme"
+}
