@@ -9,7 +9,9 @@
   "dependencies": {
     "forever-monitor": "^1.7.1",
     "moment": "^2.22.1",
-    "nodemailer": "^4.6.4"
+    "mongoose": "^5.6.8",
+    "nodemailer": "^4.6.4",
+    "pg-native": "^3.0.0"
   },
   "author": "Gerard",
   "license": "BSD-3-Clause",
@@ -18,12 +20,13 @@
     "App"
   ],
   "devDependencies": {
-    "express": "^4.16.3",
-    "xmlhttprequest": "^1.8.0",
+    "async": "^2.6.1",
     "body-parser": "^1.18.3",
-    "async":"^2.6.1",
-    "btoa":"^1.1.2",
-    "express-session":"^1.15.6"
+    "btoa": "^1.1.2",
+    "express": "^4.16.3",
+    "express-session": "^1.15.6",
+    "nodemon": "^1.19.0",
+    "xmlhttprequest": "^1.8.0"
   },
   "repository": {
     "type": "git",

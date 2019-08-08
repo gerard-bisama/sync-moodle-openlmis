@@ -3,34 +3,49 @@
   "default_locale": "en",
   "activities": {
     "moodleAPI": {
-      "url": "http://IP:PORT/moodle/webservice",
+      "url": "http://localhost/moodle/webservice",
       "wsProtocolName":"rest",
-      "wsToken":"xxxxx"
+      "wsToken":"xxxxxxxxxxxxxxxxxxxxxxxxxx"
     },
-    "openlmisAPI": {
+    "openlmisAPIV3": {
       "url": "http://IP/api",
       "credential":{"username":"username","password":"password"},
       "authentication":{"username":"username","password":"password"},
       "serviceLevelAuthentication":{"username":"username","password":"password"}
+    },
+    "openlmisAPIV2": {
+		"url": "http://localhost:9091",
+		"apiPath":"/rest-api",
+		"credential":{"username":"username","password":"pass"}
+		
+    },
+     "openlmisV2DataDBService": {
+		"pgConnectionString":"postgresql://postgres:pass@localhost:5432/open_lmis"
     }
   },
   "usernameToExclude":[
-	"user1","user2","user3"
+	"guest","admin","webserviceuser"
   ],
   "lmisUserCreationRolesAndProgramRules":[
-	{"role":"Stock Manager","program_wharehouse":"Family Planning"},
-	{"role":"Store Manager","program_wharehouse":"Essential Meds"},
-	{"role":"Storeroom Manager","program_wharehouse":"Essential Meds"},
-	{"role":"Warehouse Clerk","program_wharehouse":""}
+	{"role":"All Requisition","program_wharehouse":"1"},
+	{"role":"All Requisition","program_wharehouse":"2"},
+	{"role":"All Requisition","program_wharehouse":"3"},
+	{"role":"All Requisition","program_wharehouse":"4"}
   ],
   "emailSettings":
 	{
-		"smtp_host":"xxxx",
-		"smtp_port":"xx",
-		"smtp_secured":"xx",
-		"username":"xxxx@xxxx.com",
-		"password":"xxxxxx"
+		"smtp_host":"smtp.gmail.com",
+		"smtp_port":"587",
+		"smtp_secured":"No",
+		"username":"formationpel.ci@gmail.com",
+		"password":"SCMci@1920"
 	},
+	"emailStructure":
+	{
+		"title":"Création du compte e-SIGL(e-Formation Chaîne d'approvisionnement) ",
+		"messageContent":"<p>Bonjour,</p><p> Un nouveau compte a été créé pour vous sur le site {esigleSite} et un mot de passe temporaire vous a été délivré.</p> Les informations nécessaires à votre connexion sont: <p>nom d'utilisateur:{username}</p> <p>et mot de passe: {password}.</p> <p>Admin User</p>"
+	},
+	"maxUsersToSyncPerCall":2,
   "appType": "APP",
   "name": "Moodle-openLMIS sync app",
   "version": "1.0.0",

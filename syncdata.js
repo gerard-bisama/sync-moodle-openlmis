@@ -186,11 +186,13 @@
 	}
 	function getListMoodleCoursesAndUsers(callback)
 	{
+		//console.log("Entered!!!")
 		var listOfCourses=[];
 		var listCourseWithCategories=[];
 		//Get All coures in moodle
 		syncAPI.getListCourses(function(listCourses)
 		{
+			//console.log(listCourses);
 			if(listCourses!=null)
 			{
 				if(listCourses.length>0)
@@ -212,121 +214,189 @@
 						}
 					}//end for
 					//console.log(listTopicsCourses);
-					var async = require("async");
-					//var listCourseWithCategories=[];
-					//Add categories informations to the course
-					async.each(listTopicsCourses,function(topicCourse,callback)
+					if(listTopicsCourses.length==0)
 					{
-						//console.log(topicCourse);
-						syncAPI.getCourseCategory(topicCourse.categoryid,function(courseCategory)
+						console.log("-----No courses available in this moodle instance. Only users enrolled in the courses could be processed!");
+						callback();
+						//res.end();
+					}
+					else
+					{
+						var async = require("async");
+						//var listCourseWithCategories=[];
+						//Add categories informations to the course
+						async.each(listTopicsCourses,function(topicCourse,callback)
 						{
-							//console.log(courseCategory);
-							//console.log("----------------");
-							if(courseCategory!=null)
+							//console.log(topicCourse);
+							syncAPI.getCourseCategory(topicCourse.categoryid,function(courseCategory)
 							{
 								//console.log(courseCategory);
-								var oTopicCourse=topicCourse;
-								//oTopicCourse.category=cour
-								var tempCategoryCustomized=transformToCategoryCustomizedObject(courseCategory[0]);//Coursecategory returns always a table of 1 object
-								oTopicCourse.category=tempCategoryCustomized;
-								//console.log(tempCategoryCustomized);
-								listCourseWithCategories.push(oTopicCourse);
-							
-							}
-							callback();
-						}
-						);
-						
-					},function(err)
-						{
-							console.log("--------------Do something here section GetCourseAndCat---------------")
-							//console.log(JSON.stringify(listCourseWithCategories));
-							//now getusers and assing them the course they are enrolled to
-							var listRegisteredUser=[];//users registers manualy or self without verification of valide users
-							syncAPI.getListMoodleUSersWithPropagatedCustomizedCourseWithCat(listCourseWithCategories,function(listUsersWithPropagatedVar)
-							{
-								
-								var ListOfCustomizedCoursesObjectsWithCategories=listUsersWithPropagatedVar[0]; //Get propagatedvar
-								//console.log(ListOfCustomizedCoursesObjectsWithCategories);
-								var listUsers=[];
-								listUsers=listUsersWithPropagatedVar[1];
-								if(listUsers!=null)
+								//console.log("----------------");
+								if(courseCategory!=null)
 								{
-									//console.log(listUsers);
-									if(listUsers.users.length>0)
+									//console.log(courseCategory);
+									var oTopicCourse=topicCourse;
+									//oTopicCourse.category=cour
+									var tempCategoryCustomized=transformToCategoryCustomizedObject(courseCategory[0]);//Coursecategory returns always a table of 1 object
+									oTopicCourse.category=tempCategoryCustomized;
+									//console.log(tempCategoryCustomized);
+									listCourseWithCategories.push(oTopicCourse);
+								
+								}
+								callback();
+							}
+							);
+							
+						},function(err)
+							{
+								console.log("--------------Returned ListCourses with categories---------------")
+								//console.log(JSON.stringify(listCourseWithCategories));
+								//now getusers and assing them the course they are enrolled to
+								//@param:listCourseWithCategories is passed only to keep the variable in the context of async call to avoid loosing it
+								var listRegisteredUser=[];//users registers manualy or self without verification of valide users
+								//getthe list of Synched users
+								var listAlreadySynchedUsers=[];
+								syncAPI.getAllSynchedUsers(function(listSynchedUsers)
+								{
+									listAlreadySynchedUsers=listSynchedUsers;
+									syncAPI.getListMoodleUSersWithPropagatedCustomizedCourseWithCat(listCourseWithCategories,function(listUsersWithPropagatedVar)
 									{
-										var listValidUsers=[];
-										for(var indexUsers=0;indexUsers<listUsers.users.length;indexUsers++)
-										{
-											if(listUsersToExclude.includes(listUsers.users[indexUsers].username))
-											{
-												continue;
-											}
-											else
-											{
-												var tempUserCustomized=transformToUserCustomizedObject(listUsers.users[indexUsers]);
-												listValidUsers.push(listUsers.users[indexUsers]);
-											}
-										}//end of for
-										//console.log(listValidUsers);
-										var asyncUser = require("async");
-										var listCourseWithCategories=[];
-										var listUsersWithAssociatedCourses=[];
-										//Add categories informations to the course
-										asyncUser.each(listValidUsers,function(validUser,callback)
-										{
-											syncAPI.getListEnrolledCourses(validUser.id,function(listEnrolledCourses)
-											{
-												if(listEnrolledCourses!=null)
-												{
-													
-													if(listEnrolledCourses.length>0)
-													{
-														//console.log(listEnrolledCourses);
-														var listIdsEnrolledCourses=[];
-														for(var i=0;i<listEnrolledCourses.length;i++)
-														{
-															listIdsEnrolledCourses.push(listEnrolledCourses[i].id);
-														}
-														//console.log(ListOfCustomizedCoursesObjectsWithCategories);
-														var listUserEnrolledCourses=getListCustomizedCourseObjetFromIds(listIdsEnrolledCourses,ListOfCustomizedCoursesObjectsWithCategories);
-														var tempUser=validUser;
-														tempUser.enrolledCourses=listUserEnrolledCourses;
-														listUsersWithAssociatedCourses.push(tempUser);
-														//console.log("----Fech enrolled courses----");
-														//console.log(JSON.stringify( tempUser));
-													}
-												}
-												callback();
-											});
-										},function(err)
-										{
-											console.log("--------------Do something here section GetUsersEnrolledCourses---------------");
-											//console.log(JSON.stringify(listUsersWithAssociatedCourses));
-											//res.send(listUsersWithAssociatedCourses);
-											//Remove users without enrolled courses
-											var cleanedListUsersWithAssociatedCourses=[];
-											for(var indexUser=0;indexUser<listUsersWithAssociatedCourses.length;indexUser++)
-											{
-												if(listUsersWithAssociatedCourses[indexUser].enrolledCourses.length>0)
-												{
-													cleanedListUsersWithAssociatedCourses.push(listUsersWithAssociatedCourses[indexUser]);
-												}
-											}
-											return callback(cleanedListUsersWithAssociatedCourses);
-										}//end  of function(err) asyncUser
-										);
 										
-									}//End if users.length
-								}//end if listUsers!=null
-							});
-						}//End of function(err) async
-					);//End async
+										var ListOfCustomizedCoursesObjectsWithCategories=listUsersWithPropagatedVar[0]; //Get propagatedvar
+										//console.log(ListOfCustomizedCoursesObjectsWithCategories);
+										var listUsers=[];
+										listUsers=listUsersWithPropagatedVar[1];
+										console.log("Returned List of Moodle users");
+										var maxUsersToSyncPerCall=syncAPI.getMaxUsersToSyncPerCall();
+										if(listUsers!=null)
+										{
+											//console.log(listUsers);
+											if(listUsers.users.length>0)
+											{
+												var listValidUsers=[];
+												for(var indexUsers=0;indexUsers<listUsers.users.length;indexUsers++)
+												{
+													if(listUsersToExclude.includes(listUsers.users[indexUsers].username))
+													{
+														continue;
+													}
+													else
+													{
+														var found=checkUserIdInSynchedList(listUsers.users[indexUsers].id,listAlreadySynchedUsers);
+														if(found)
+														{
+															continue;
+														}
+														//var tempUserCustomized=transformToUserCustomizedObject(listUsers.users[indexUsers]);
+														if(listValidUsers.length < maxUsersToSyncPerCall)
+														{
+															var tempUserCustomized=transformToUserCustomizedObject(listUsers.users[indexUsers]);
+															listValidUsers.push(tempUserCustomized);
+														}
+														
+													}
+												}//end of for
+												//console.log(listValidUsers);
+												if(listValidUsers.length == 0)
+												{
+													console.log("-----There is not any users enrolled on a course in this moodle instance!-----");
+													callback();
+												}
+												else
+												{
+													var asyncUser = require("async");
+													var listCourseWithCategories=[];
+													var listUsersWithAssociatedCourses=[];
+													//Add categories informations to the course
+													var compteur=0;
+													asyncUser.each(listValidUsers,function(validUser,callback)
+													{
+														//console.log(compteur+"/"+listValidUsers.length);
+														console.log("get enrolled courses for user "+validUser.id);
+														syncAPI.getListEnrolledCourses(validUser.id,function(listEnrolledCourses)
+														{
+															//console.log(listEnrolledCourses);
+															if(listEnrolledCourses!=null)
+															{
+																
+																if(listEnrolledCourses.length>0)
+																{
+																	//console.log(listEnrolledCourses);
+																	var listIdsEnrolledCourses=[];
+																	for(var i=0;i<listEnrolledCourses.length;i++)
+																	{
+																		listIdsEnrolledCourses.push(listEnrolledCourses[i].id);
+																	}
+																	//console.log(ListOfCustomizedCoursesObjectsWithCategories);
+																	var listUserEnrolledCourses=getListCustomizedCourseObjetFromIds(listIdsEnrolledCourses,ListOfCustomizedCoursesObjectsWithCategories);
+																	var tempUser=validUser;
+																	tempUser.enrolledCourses=listUserEnrolledCourses;
+																	listUsersWithAssociatedCourses.push(tempUser);
+																	//console.log("----Fech enrolled courses----");
+																	//console.log(JSON.stringify( tempUser));
+																}
+															}
+															//compteur++;
+															callback();
+															
+														});
+														//callback();
+														compteur++;
+													},function(err)
+													{
+														console.log("--------------Returns the  section List users and associated courses---------------");
+														//console.log(JSON.stringify(listUsersWithAssociatedCourses));
+														//return;
+														//res.send(listUsersWithAssociatedCourses);
+														//Remove users without enrolled courses
+														var cleanedListUsersWithAssociatedCourses=[];
+														for(var indexUser=0;indexUser<listUsersWithAssociatedCourses.length;indexUser++)
+														{
+															if(listUsersWithAssociatedCourses[indexUser].enrolledCourses.length>0)
+															{
+																cleanedListUsersWithAssociatedCourses.push(listUsersWithAssociatedCourses[indexUser]);
+															}
+														}
+														return callback(cleanedListUsersWithAssociatedCourses);
+													}//end  of function(err) asyncUser
+													);
+												}
+												
+												
+											}//End if users.length
+										}//end if listUsers!=null
+									});
+								
+								});
+								
+								
+							}//End of function(err) async
+						);//End async
+					}//fin else listTopicCourses.length
 					
-				}
-			}//end if 
+					
+				}//end if listcourse lenghth 
+			}//end if listcourse null
+			else
+			{
+				console.log("-----No courses available in this moodle instance. Only user enrolled in the course could be processed!");
+				callback();
+			}
 			//return res.end();
 		});//End API getListCoures
+	}
+	function checkUserIdInSynchedList(userId,synchedUserLists)
+	{
+		var found=false;
+		for(var index=0;index<synchedUserLists.length;index++)
+		{
+			if(synchedUserLists[index].id==""+userId)
+			{
+				found=true;
+				break;
+			}
+		}
+		return found;
 	}
 	function transformToCourseCustomizedObject(moodleRawCourse)
 	{
@@ -352,6 +422,7 @@
 	}
 	function transformToCategoryCustomizedObject(moodleRawCategory)
 	{
+		//console.log()
 		var oCategory={};
 		oCategory=Object.create(CourseCategory);
 		oCategory.id=moodleRawCategory.id;
@@ -393,7 +464,7 @@
 		oUser.theme=moodleRawUser.theme;
 		oUser.timezone=moodleRawUser.timezone;
 		oUser.mailformat=moodleRawUser.mailformat;
-		if(moodleRawUser.customfields!=undefined)
+		if(moodleRawUser.customfields!=null)
 		{
 			oUser.customfields=moodleRawUser.customfields;
 		}
@@ -422,7 +493,15 @@
 			{
 				for(var indexCourse=0;indexCourse<listUsers[indexUser].enrolledCourses.length;indexCourse++)
 				{
-					listCourseCategoryId.push(listUsers[indexUser].enrolledCourses[indexCourse].category.idnumber.trim().toLowerCase());
+					if(listUsers[indexUser].enrolledCourses[indexCourse].category.idnumber!=null)
+					{
+						listCourseCategoryId.push(listUsers[indexUser].enrolledCourses[indexCourse].category.idnumber.trim().toLowerCase());
+					}
+					else
+					{
+						continue;
+					}
+					
 				}
 				break;
 			}
@@ -469,6 +548,26 @@
 		}
 		listSortedFacilities=listFacilities;
 		return listSortedFacilities;
+	}
+	function sortListUsersById(listMoodleUsers)
+	{
+		var listSortedUsers=[];
+		var maxLength=listMoodleUsers.length;
+		for(K = 0; K < maxLength; K++)
+		{
+			for(I = maxLength - 2;I >= 0; I--)
+			{
+				for(J = 0; J <= I; J++) {
+					if(listMoodleUsers[J+1].id<listMoodleUsers[J].id){
+						var t=listMoodleUsers[J+1];
+						listMoodleUsers[J+1]=listMoodleUsers[J];
+						listMoodleUsers[J]=t;
+					}
+				}
+			}
+		}
+		listSortedUsers=listMoodleUsers;
+		return listSortedUsers;
 	}
 	function getRoleByName(roleName,listRoles)
 	{
@@ -575,7 +674,7 @@
 							
 							//console.log(JSON.stringify(_listUsers[1]));
 							//console.log("--------------------------------------");
-							console.log("End of the process....");
+							console.log("returns list of eSIGL facilities and associated users");
 							return callback(_listFacilities);
 							//return res.send(_listFacilities);
 						}//end if _listUsers
@@ -637,7 +736,53 @@
 		});//end getAccessToken
 	
 	}
+	function getListLMISFacilitiesAndAssociatedUsersV2(callback)
+	{
+		
+		syncAPI.getListFacilityV2(function(listFacilities)
+		{
+			var _listFacilities=listFacilities;
+			syncAPI.getListUsersOpenLMISV2(function(listUsers)
+			{
+				var _listUsers=listUsers;
+				if(_listUsers.length>0)
+				{
+					for(var indexFacility=0;indexFacility<_listFacilities.length;indexFacility++)
+					{
+						//for each facilities, find user that have if as home facility
+						for(var indexUser=0;indexUser<_listUsers.length;indexUser++)
+						{
+							if(_listUsers[indexUser].homeFacilityId==_listFacilities[indexFacility].id)
+							{
+								//console.log("Match...");
+								_listFacilities[indexFacility].users.push(_listUsers[indexUser]);
+							}
+							else
+							{
+								continue;
+							}
+						}
+					}
+					console.log("Returns eSIGL facilities and associated users");
+					return callback(_listFacilities);
+					
+				}
+				else
+				{
+					console.log("Returns eSIGL facilities and associated users");
+					return callback(_listFacilities);
+				}
+			});//end get listUsers
+		});//End getFacilities
 	
+	}
+	function getLMISRolesV2(callback)
+	{
+		syncAPI.getListRolesLMISV2(function(listRoles)
+		{
+			return callback(listRoles);
+		});
+	}
 	function getLmisUsersFromFacility(facilityId,listLmisFacilities)
 	{
 		var usersFound=[];
@@ -709,6 +854,7 @@
 		//geListOfMoodleUsers(res)
 		var async = require("async");
 		var _listUserAndAssociatedCourse=[];
+		//used [1],fanciful array since async require the first param to loop through
 		async.each([1],function(oUser,callback)
 		{
 			getListMoodleCoursesAndUsers(function(listUserAndAssociatedCourse)
@@ -720,8 +866,16 @@
 		},function(error)
 		{
 			console.log("Finish Building list User and role....");
-			console.log(_listUserAndAssociatedCourse);
-			return res.send(_listUserAndAssociatedCourse);
+			if(_listUserAndAssociatedCourse!=undefined)
+			{
+				console.log(_listUserAndAssociatedCourse);
+				return res.send(_listUserAndAssociatedCourse);
+			}
+			else
+			{
+				return res.send([]);
+			}
+			
 		});
 		//res.send(res);
 		
@@ -730,6 +884,7 @@
 	{
 		var async = require("async");
 		var _listFacilitiesAndAssociatedUsers=[];
+		//used [1],fanciful array since async require the first param to loop through
 		async.each([1],function(oUser,callback)
 		{
 			getListLMISFacilitiesAndAssociatedUsers(function(listFacilitiesAndAssociatedUsers)
@@ -745,10 +900,247 @@
 			return res.send(_listFacilitiesAndAssociatedUsers);
 		});
 	});
+	app.get ("/getfacilitiesandusersOpenLMISV2", function (req,res,next)
+	{
+		var async = require("async");
+		var _listFacilitiesAndAssociatedUsers=[];
+		//used [1],fanciful array since async require the first param to loop through
+		async.each([1],function(oUser,callback)
+		{
+			getListLMISFacilitiesAndAssociatedUsersV2(function(listFacilitiesAndAssociatedUsers)
+			{
+				_listFacilitiesAndAssociatedUsers=listFacilitiesAndAssociatedUsers;
+				callback();
+			});
+			
+		},function(error)
+		{
+			console.log("Finish Building list LMIS facilities and associated users....");
+			//console.log(_listUserAndAssociatedCourse);
+			return res.send(_listFacilitiesAndAssociatedUsers);
+		});
+	});
+	app.get ("/getfacilitiesv2", function (req,res,next)
+	{
+		//console.log("Enter v2");
+		syncAPI.getListFacilityV2(function(listFacilities)
+		{
+			//console.log(listFacilities);
+			return res.send(listFacilities);
+		});
+	});
+	app.get ("/getlmisv2users", function (req,res,next)
+	{
+		//console.log("Enter v2");
+		syncAPI.getListUsersOpenLMISV2(function(listUsers)
+		{
+			//console.log(listFacilities);
+			return res.send(listUsers);
+		});
+	});
+	app.get ("/lanchsyncv2", function (req,res,next)
+	{
+		var async = require("async");
+		var _listUserAndAssociatedCourse=[];
+		var _listFacilitiesAndAssociatedUsers=[];
+		var _listRoles=[];
+		async.each([1,2,3],function(index,callback)
+		{
+			if(index==1)
+			{
+				//console.log("Entered "+index);
+				getListMoodleCoursesAndUsers(function(listUserAndAssociatedCourse)
+				{
+					_listUserAndAssociatedCourse=listUserAndAssociatedCourse;
+					callback();
+				});
+			}
+			if(index==2)
+			{
+				getListLMISFacilitiesAndAssociatedUsersV2(function(listFacilitiesAndAssociatedUsers)
+				{
+					_listFacilitiesAndAssociatedUsers=listFacilitiesAndAssociatedUsers;
+					callback();
+				});
+			}
+			if(index==3)
+			{
+				getLMISRolesV2(function(listRoles)
+				{
+					_listRoles=listRoles;
+					callback();
+				});
+			}
+		},function(error)
+		{
+			console.log("Finish Building list User and role....");
+			//console.log(_listUserAndAssociatedCourse.length);
+			if(_listUserAndAssociatedCourse.length>0)
+			{
+				//console.log(_listFacilitiesAndAssociatedUsers);
+				//return;
+				var listUsersToCreateInLmis=[];
+				for(var indexUser=0;indexUser<_listUserAndAssociatedCourse.length;indexUser++)
+				{
+					var usernameToFind=_listUserAndAssociatedCourse[indexUser].username;
+					var userIsAlreadyInLmis=false;
+					var userFound=null;
+					//for each facility check if the user  
+					for(var indexFacility=0;indexFacility<_listFacilitiesAndAssociatedUsers.length; indexFacility++)
+					{
+						var listUsersInFacility=[];
+						if(_listFacilitiesAndAssociatedUsers[indexFacility].users.length>0)
+						{
+							listUsersInFacility=getLmisUsersFromFacility(_listFacilitiesAndAssociatedUsers[indexFacility].id,_listFacilitiesAndAssociatedUsers);
+							userFound=getLmisUsersWithUsername(usernameToFind,listUsersInFacility);
+							if(userFound!=null)//if user already created in openlmis,stop all process and pass to the next user
+							{
+								//continue;
+								userIsAlreadyInLmis=true;
+								break;
+							}
+						}
+						else
+						{
+							continue;
+						}
+					}//end for _listFacilitiesAndAssociatedCourse
+					if(userIsAlreadyInLmis)
+					{
+						continue; //continue to the next user.This user could be created
+					}
+					else//this user shoud be created in openlmis
+					{
+						listUsersToCreateInLmis.push(_listUserAndAssociatedCourse[indexUser]);
+					}
+					
+				}//End for _listUserAndAssociatedCourse
+				//console.log(listUsersToCreateInLmis);
+				var nbrOfUserToAddInLMIS=listUsersToCreateInLmis.length;
+				if(nbrOfUserToAddInLMIS>0)
+				{
+					//limit the number of user to create to 20 every calls to avoid max_connection limit fixed to 100
+					var maxUsersToSyncPerCall=syncAPI.getMaxUsersToSyncPerCall();
+					var sortedListUsersToCreateInLMIS=sortListUsersById(listUsersToCreateInLmis);
+					//var finalListUserToCreateInLMIS=sortedListUsersToCreateInLMIS.slice(0,maxUsersToSyncPerCall);
+					var finalListUserToCreateInLMIS=sortedListUsersToCreateInLMIS;
+					//console.log(finalListUserToCreateInLMIS);
+					//return;
+					var listLmisUserToCreate=[];
+					//Get the sorted list of first 100 facilities,limit 100 due to the max_connection params configured in postgres openlmis
+					var listSortedFacility=sortListFacilityByNbrUserAndName(_listFacilitiesAndAssociatedUsers.slice(0,100));
+					var listSortedFacilityToAdd=listSortedFacility.slice(0,maxUsersToSyncPerCall);
+					//console.log(listSortedFacilityToAdd);
+					//return;
+					for(var indexUser=0;indexUser<finalListUserToCreateInLMIS.length;indexUser++)
+					{
+						//Generate random index for listHomeFacility
+						var indexHomeFacilities=Math.floor(Math.random() * listSortedFacilityToAdd.length);
+						var homeFacilityId=listSortedFacility[indexHomeFacilities].id;
+						var listRoleAssigned=[];
+						//list roles and associated programs defined by default in manifest file
+						var listRoleAndProgramsRules=syncAPI.getlmisUserRolesAndProgramRules();
+						//the role is returned as course categoryid
+						//var listRoleFromMoodleUser=getListRolesFromMoodleUser(finalListUserToCreateInLMIS[indexUser].id,finalListUserToCreateInLMIS);
+						//console.log(listRoleFromMoodleUser);
+						//console.log("-----------------------");
+						for(var indexRule=0;indexRule<listRoleAndProgramsRules.length;indexRule++)
+						{
+							var oRoleProgramRule=listRoleAndProgramsRules[indexRule];
+							var oRole=getRoleByName(oRoleProgramRule.role,_listRoles);
+							var oRoleToAssign={roleId:oRole.id,programId:oRoleProgramRule.program_wharehouse};
+							listRoleAssigned.push(oRoleToAssign);
+							
+						}//end for listRoleAndProgramsRules
+						if(finalListUserToCreateInLMIS[indexUser].username!="")
+						{
+							var passwordPart2=Math.floor(Math.random() * 10000)+9000;
+							var _password="Moodle!"+passwordPart2;
+							var lmisUser={username:finalListUserToCreateInLMIS[indexUser].username,password:_password,firstName:finalListUserToCreateInLMIS[indexUser].firstname,
+							lastName:finalListUserToCreateInLMIS[indexUser].lastname,email:finalListUserToCreateInLMIS[indexUser].email,active:true,loginRestricted:false,
+							homeFacilityId:homeFacilityId,
+							roleAssignments:listRoleAssigned};
+							listLmisUserToCreate.push(lmisUser);
+						}
+					}//end for listUsersToCreateInLmis
+					//console.log(JSON.stringify(listLmisUserToCreate));
+					console.log(listLmisUserToCreate);
+					//return ;
+					var async = require("async");
+					var listResultUsersCreated=[];
+					async.each(listLmisUserToCreate,function(userToCreate,callback)
+					{
+						/*
+						syncAPI.createLMISUserLMISV2Sync(userToCreate,function(res)
+						{
+							if(res)
+							{
+								console.log(userToCreate.username+" created in eSIGL");
+								listResultUsersCreated.push(userToCreate);
+							}
+							else
+							{
+								console.log("Error:"+userToCreate.username+" not created in eSIGL!!");
+							}
+							callback();
+						});*/
+						listResultUsersCreated.push(userToCreate);
+						callback();
+					},function(err)
+					{
+						if(err)
+						{
+							console.log("Error Create user"+err);
+						}
+						console.log("Create LMIS users done!!!");
+						var emailSettings=syncAPI.getEmailSettings();
+						//return;
+						//now send email to the openLMIS user
+						var esigleSite=syncAPI.getOpenLMISV2Url();
+						var emailTitle=syncAPI.getEmailStructure().title;
+						
+						//var username=
+						var async = require("async");
+						async.each(listResultUsersCreated,function(resultUser,callback)
+						{
+							//var email=resultUser.email;
+							var email="gerbis2000@gmail.com";
+							var username=resultUser.username;
+							var password=resultUser.password;
+							var messageContent=syncAPI.getEmailStructure().messageContent;
+							messageContent= messageContent.replace("{esigleSite}",esigleSite);
+							messageContent=messageContent.replace("{username}",username);
+							messageContent=messageContent.replace("{password}",password);
+							var destination=["gerbis2000@gmail.com"];
+							SENDEMAIL.sendEmail(emailTitle,messageContent,destination,emailSettings,()=>{
+								console.log("Email sent!");
+							})
+							//console.log(messageContent);
+							callback();
+						},function(err)
+						{
+							if(err)
+							{
+								console.log("Error: "+err);
+							}
+							return;
+							
+						});
+						
+						
+						
+					});//end async listLmisUserToCreate
+				}//end if nbrOfUserToAddInLMIS>0
+			}
+		} //end of  function(error)
+		);//end of async.each([1,2]..
+		
+	});
 	app.get ("/lanchsync", function (req,res,next)
 	{
 		var async = require("async");
 		var _listUserAndAssociatedCourse=[];
+		var _listFacilitiesAndAssociatedUsers=[];
 		var _listFacilitiesAndAssociatedUsers=[];
 		var _listRoles=[];
 		var _listPrograms=[];
@@ -861,54 +1253,20 @@
 							if(listRoleFromMoodleUser.includes(oRoleProgramRule.role.trim().toLowerCase()))
 							{
 								var oRole=getRoleByName(oRoleProgramRule.role,_listRoles);
-								//console.log(oRole);
-								
-								var oProgram=null;
-								if(oRoleProgramRule.program_wharehouse!="")
-								{
-									oProgram=getProgramByName(oRoleProgramRule.program_wharehouse,_listPrograms);
-								}
-								var oRoleToAssign=null;
-								//console.log(oProgram);
-								
-								if(oProgram!=null)
-								{
-									oRoleToAssign={roleId:oRole.id,programId:oProgram.id};
-								}
-								else
-								{
-									oRoleToAssign={roleId:oRole.id,warehouseId:homeFacilityId};
-								}
-								//console.log(oRoleToAssign);
-								//console.log("---------------------------");
+								var oRoleToAssign={roleId:oRole.id,warehouseId:homeFacilityId};
 								listRoleAssigned.push(oRoleToAssign);
 							}
-							
-							
 						}//end for listRoleAndProgramsRules
-						/*
-						var _geographicZone={code:listSortedFacility[indexUser].geo_zone_code,level:
-							{code:listSortedFacility[indexUser].geo_zone_level_code,levelNumber:listSortedFacility[indexUser].geo_zone_levelNumber,
-								id:listSortedFacility[indexUser].geo_zone_level_id}};
-						var facilityType={code:listSortedFacility[indexUser].type_code,name:listSortedFacility[indexUser].type_name};
-						var _homeFacility={code:listSortedFacility[indexUser].code,geographicZone:_geographicZone,type:facilityType,active:true,
-							enabled:true};
-							
-						var lmisUser={username:listUsersToCreateInLmis[indexUser].username,firstName:listUsersToCreateInLmis[indexUser].firstname,
-							lastName:listUsersToCreateInLmis[indexUser].lastname,active:true,loginRestricted:true,homeFacility:_homeFacility,
-							roleAssignments:listRoleAssigned};
-							
-							if(listUsersToCreateInLmis[indexUser].username=="cpoemhi")
-							{}*/
-							if(listUsersToCreateInLmis[indexUser].username!="")
-							{
-							var lmisUser={username:listUsersToCreateInLmis[indexUser].username,firstName:listUsersToCreateInLmis[indexUser].firstname,
-								lastName:listUsersToCreateInLmis[indexUser].lastname,email:listUsersToCreateInLmis[indexUser].email,active:true,loginRestricted:true,
-								homeFacilityId:homeFacilityId,
-								roleAssignments:listRoleAssigned};
-						listLmisUserToCreate.push(lmisUser);
-							};
 						
+						if(listUsersToCreateInLmis[indexUser].username!="")
+						{
+						var lmisUser={username:listUsersToCreateInLmis[indexUser].username,firstName:listUsersToCreateInLmis[indexUser].firstname,
+							lastName:listUsersToCreateInLmis[indexUser].lastname,email:listUsersToCreateInLmis[indexUser].email,active:true,loginRestricted:true,
+							homeFacilityId:homeFacilityId,
+							roleAssignments:listRoleAssigned};
+						listLmisUserToCreate.push(lmisUser);
+						};
+					
 						
 					}//end for listUsersToCreateInLmis
 					
