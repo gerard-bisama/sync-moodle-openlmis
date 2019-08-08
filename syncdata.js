@@ -184,15 +184,24 @@
 			return res.end();
 		});
 	}
-	function getListMoodleCoursesAndUsers(callback)
+	function getListMoodleCoursesAndUsers(mainCallback)
 	{
 		//console.log("Entered!!!")
 		var listOfCourses=[];
 		var listCourseWithCategories=[];
 		//Get All coures in moodle
-		syncAPI.getListCourses(function(listCourses)
+		var _listCoursesToProcess=syncAPI.getCoursesToProcess();
+		syncAPI.getListCourses(function(returnedCourses)
 		{
 			//console.log(listCourses);
+			var listCourses=[];
+			for(var indexCourse=0;indexCourse<returnedCourses.length;indexCourse++)
+			{
+				if(_listCoursesToProcess.includes(returnedCourses[indexCourse].shortname))
+				{
+					listCourses.push(returnedCourses[indexCourse]);
+				}
+			}
 			if(listCourses!=null)
 			{
 				if(listCourses.length>0)
@@ -232,6 +241,8 @@
 							{
 								//console.log(courseCategory);
 								//console.log("----------------");
+								/*
+								//Select corseCategorie=>lmisRoles
 								if(courseCategory!=null)
 								{
 									//console.log(courseCategory);
@@ -242,7 +253,8 @@
 									//console.log(tempCategoryCustomized);
 									listCourseWithCategories.push(oTopicCourse);
 								
-								}
+								}*/
+								listCourseWithCategories.push(topicCourse);
 								callback();
 							}
 							);
@@ -259,6 +271,66 @@
 								syncAPI.getAllSynchedUsers(function(listSynchedUsers)
 								{
 									listAlreadySynchedUsers=listSynchedUsers;
+									//console.log(listAlreadySynchedUsers);
+									//return;
+									var asyncUser = require("async");
+									//var listCourseWithCategories=[];
+									//Add categories informations to the course
+									var listValidUsers=[];
+									asyncUser.each(listCourseWithCategories,function(oCourse,callback)
+									{
+										console.log("Get users for the course:"+oCourse.id);
+										
+										syncAPI.getListEnrolledUsers(oCourse.id,function(listUsers)
+										{
+											var maxUsersToSyncPerCall=syncAPI.getMaxUsersToSyncPerCall();
+											console.log("Users found :"+listUsers.length);
+											
+											if(listUsers.length>0)
+											{
+												//console.log(listUsers[0]);
+												//console.log("---------------");
+												for(var indexUsers=0;indexUsers<listUsers.length;indexUsers++)
+												{
+													if(listUsersToExclude.includes(listUsers[indexUsers].username))
+													{
+														continue;
+													}
+													else
+													{
+														var found=checkUserIdInSynchedList(listUsers[indexUsers].id,listAlreadySynchedUsers);
+														if(found)
+														{
+															continue;
+														}
+														//var tempUserCustomized=transformToUserCustomizedObject(listUsers.users[indexUsers]);
+														if(listValidUsers.length < maxUsersToSyncPerCall)
+														{
+															var tempUserCustomized=transformToUserCustomizedObject(listUsers[indexUsers]);
+															listValidUsers.push(tempUserCustomized);
+														}
+														
+													}
+												}//end of for
+												//console.log("listUsers retained"+listValidUsers.length);
+											}//end if listUsers
+											callback();
+										});
+									},function(err)
+									{
+										if(err)
+										{
+											console.log(err);
+										}
+										console.log("Nbre of users to process for this call: "+listValidUsers.length);
+										//console.log(listValidUsers);
+										//return;
+										mainCallback(listValidUsers);
+									});//end asyncUser listCourseWithCategories
+									
+									
+									
+									/*
 									syncAPI.getListMoodleUSersWithPropagatedCustomizedCourseWithCat(listCourseWithCategories,function(listUsersWithPropagatedVar)
 									{
 										
@@ -365,12 +437,12 @@
 												
 											}//End if users.length
 										}//end if listUsers!=null
-									});
+									}); end syncAPI.getListMoodleUSersWithPropagatedCustomizedCourseWithCat*/
 								
-								});
+								});//end syncAPI.getAllSynchedUsers
 								
 								
-							}//End of function(err) async
+							}//End of function(err) async listTopicsCourses
 						);//End async
 					}//fin else listTopicCourses.length
 					
@@ -380,7 +452,7 @@
 			else
 			{
 				console.log("-----No courses available in this moodle instance. Only user enrolled in the course could be processed!");
-				callback();
+				mainCallback([]);
 			}
 			//return res.end();
 		});//End API getListCoures
@@ -390,7 +462,9 @@
 		var found=false;
 		for(var index=0;index<synchedUserLists.length;index++)
 		{
-			if(synchedUserLists[index].id==""+userId)
+			//console.log(synchedUserLists[index].userid+"=="+""+userId);
+			//console.log(synchedUserLists[index].userid==""+userId);
+			if(synchedUserLists[index].userid==""+userId)
 			{
 				found=true;
 				break;
@@ -741,38 +815,73 @@
 		
 		syncAPI.getListFacilityV2(function(listFacilities)
 		{
-			var _listFacilities=listFacilities;
-			syncAPI.getListUsersOpenLMISV2(function(listUsers)
+			var _listFacilities=[];
+			//var allFacilities=listFacilities;
+			var async = require("async");
+			console.log("Returned facilities:"+listFacilities.length);
+			//Select only facilities with productProgram
+			async.each(listFacilities,function(oFacility,callbackFacility)
 			{
-				var _listUsers=listUsers;
-				if(_listUsers.length>0)
+				console.log("Check if "+oFacility.code +" has program...");
+				syncAPI.checkFacilityHasProgramProducts(oFacility.code,function(isProgramFacility)
 				{
-					for(var indexFacility=0;indexFacility<_listFacilities.length;indexFacility++)
+					//console.log(isProgramFacility);
+					if(isProgramFacility)
 					{
-						//for each facilities, find user that have if as home facility
-						for(var indexUser=0;indexUser<_listUsers.length;indexUser++)
+						_listFacilities.push(oFacility);
+					}
+					callbackFacility();
+				});
+				
+			},function(err)
+			{
+				if(err)
+				{
+					console.log(err);
+				}
+				console.log("Facilities with product-programs :"+_listFacilities.length +"/"+listFacilities.length);
+				syncAPI.getListUsersOpenLMISV2(function(listUsers)
+				{
+					var _listUsers=listUsers;
+					//console.log(_listUsers);
+					if(_listUsers.length>0)
+					{
+						for(var indexFacility=0;indexFacility<_listFacilities.length;indexFacility++)
 						{
-							if(_listUsers[indexUser].homeFacilityId==_listFacilities[indexFacility].id)
+							//for each facilities, find user that have if as home facility
+							for(var indexUser=0;indexUser<_listUsers.length;indexUser++)
 							{
-								//console.log("Match...");
-								_listFacilities[indexFacility].users.push(_listUsers[indexUser]);
-							}
-							else
-							{
-								continue;
+								//console.log(_listUsers[indexUser].homeFacilityId+"=="+_listFacilities[indexFacility].id+"=>");
+								//console.log(_listUsers[indexUser].homeFacilityId==_listFacilities[indexFacility].id);
+								if(_listUsers[indexUser].homeFacilityId==_listFacilities[indexFacility].id)
+								{
+									console.log("Match...");
+									_listFacilities[indexFacility].users.push(_listUsers[indexUser]);
+									//console.log(_listFacilities[indexFacility]);
+									//console.log("----------------------------");
+								}
+								else
+								{
+									continue;
+								}
 							}
 						}
+						console.log("Returns eSIGL facilities and associated users");
+						return callback(_listFacilities);
+						
 					}
-					console.log("Returns eSIGL facilities and associated users");
-					return callback(_listFacilities);
-					
-				}
-				else
-				{
-					console.log("Returns eSIGL facilities and associated users");
-					return callback(_listFacilities);
-				}
-			});//end get listUsers
+					else
+					{
+						console.log("Returns eSIGL facilities and associated users");
+						return callback(_listFacilities);
+					}
+				});//end get listUsers
+				
+			});//end async _listFacilities
+			
+			
+			
+			
 		});//End getFacilities
 	
 	}
@@ -957,6 +1066,7 @@
 			}
 			if(index==2)
 			{
+				//console.log("Entered "+index);
 				getListLMISFacilitiesAndAssociatedUsersV2(function(listFacilitiesAndAssociatedUsers)
 				{
 					_listFacilitiesAndAssociatedUsers=listFacilitiesAndAssociatedUsers;
@@ -965,6 +1075,7 @@
 			}
 			if(index==3)
 			{
+				//console.log("Entered "+index);
 				getLMISRolesV2(function(listRoles)
 				{
 					_listRoles=listRoles;
@@ -974,7 +1085,9 @@
 		},function(error)
 		{
 			console.log("Finish Building list User and role....");
-			//console.log(_listUserAndAssociatedCourse.length);
+			//console.log(_listFacilitiesAndAssociatedUsers);
+			//return;
+			console.log("ListUsers and associated courses:"+_listUserAndAssociatedCourse.length);
 			if(_listUserAndAssociatedCourse.length>0)
 			{
 				//console.log(_listFacilitiesAndAssociatedUsers);
@@ -1016,7 +1129,9 @@
 					
 				}//End for _listUserAndAssociatedCourse
 				//console.log(listUsersToCreateInLmis);
+				//return;
 				var nbrOfUserToAddInLMIS=listUsersToCreateInLmis.length;
+				console.log("List user to create in LMIS:"+nbrOfUserToAddInLMIS);
 				if(nbrOfUserToAddInLMIS>0)
 				{
 					//limit the number of user to create to 20 every calls to avoid max_connection limit fixed to 100
@@ -1056,7 +1171,7 @@
 						{
 							var passwordPart2=Math.floor(Math.random() * 10000)+9000;
 							var _password="Moodle!"+passwordPart2;
-							var lmisUser={username:finalListUserToCreateInLMIS[indexUser].username,password:_password,firstName:finalListUserToCreateInLMIS[indexUser].firstname,
+							var lmisUser={id:finalListUserToCreateInLMIS[indexUser].id,username:finalListUserToCreateInLMIS[indexUser].username,password:_password,firstName:finalListUserToCreateInLMIS[indexUser].firstname,
 							lastName:finalListUserToCreateInLMIS[indexUser].lastname,email:finalListUserToCreateInLMIS[indexUser].email,active:true,loginRestricted:false,
 							homeFacilityId:homeFacilityId,
 							roleAssignments:listRoleAssigned};
@@ -1083,9 +1198,12 @@
 								console.log("Error:"+userToCreate.username+" not created in eSIGL!!");
 							}
 							callback();
-						});*/
+						});
+						*/
+						
 						listResultUsersCreated.push(userToCreate);
 						callback();
+						
 					},function(err)
 					{
 						if(err)
@@ -1113,7 +1231,7 @@
 							messageContent=messageContent.replace("{password}",password);
 							var destination=["gerbis2000@gmail.com"];
 							SENDEMAIL.sendEmail(emailTitle,messageContent,destination,emailSettings,()=>{
-								console.log("Email sent!");
+							console.log("Email sent!");
 							})
 							//console.log(messageContent);
 							callback();
@@ -1123,8 +1241,15 @@
 							{
 								console.log("Error: "+err);
 							}
-							return;
-							
+							//Then log the account in the mongodb
+							var currentDate=new Date().toJSON().split("T")[0];
+							console.log(listResultUsersCreated);
+							syncAPI.saveAllSynchedUsers(currentDate,listResultUsersCreated,function(resLog)
+							{
+								console.log(resLog);
+							})//end syncAPI.saveAllSynchedUsers
+							//return;
+							return res.send({"NbreCreatedUsers":listResultUsersCreated.length})
 						});
 						
 						
