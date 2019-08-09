@@ -37,8 +37,8 @@
 		"smtp_host":"smtp.gmail.com",
 		"smtp_port":"587",
 		"smtp_secured":"No",
-		"username":"formationpel.ci@gmail.com",
-		"password":"SCMci@1920"
+		"username":"email",
+		"password":"pwd"
 	},
 	"emailStructure":
 	{
