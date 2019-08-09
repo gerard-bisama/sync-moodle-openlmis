@@ -5,7 +5,7 @@
     "moodleAPI": {
       "url": "http://localhost/moodle/webservice",
       "wsProtocolName":"rest",
-      "wsToken":"xxxxxxxxxxxxxxxxxxxxxxxxxx"
+      "wsToken":"xxxxxxxx"
     },
     "openlmisAPIV3": {
       "url": "http://IP/api",
@@ -16,15 +16,20 @@
     "openlmisAPIV2": {
 		"url": "http://localhost:9091",
 		"apiPath":"/rest-api",
-		"credential":{"username":"username","password":"pass"}
+		"credential":{"username":"Admin123","password":"Admin123"}
 		
     },
      "openlmisV2DataDBService": {
-		"pgConnectionString":"postgresql://postgres:pass@localhost:5432/open_lmis"
+		"url": "http://127.0.0.1:8083",
+		"pgConnectionString":"postgresql://postgres:user@localhost:5432/open_lmis",
+		"requestToken":"xxxxxxxxxxxxxxxx"
     }
   },
   "usernameToExclude":[
 	"guest","admin","webserviceuser"
+  ],
+  "coursesToProcess":[
+	"Gestion de stock","CTEST"
   ],
   "lmisUserCreationRolesAndProgramRules":[
 	{"role":"All Requisition","program_wharehouse":"1"},
@@ -37,8 +42,8 @@
 		"smtp_host":"smtp.gmail.com",
 		"smtp_port":"587",
 		"smtp_secured":"No",
-		"username":"formationpel.ci@gmail.com",
-		"password":"SCMci@1920"
+		"username":"email",
+		"password":"pwd"
 	},
 	"emailStructure":
 	{
